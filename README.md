@@ -1,6 +1,5 @@
-# Glossy
 
->  _**Make your decorators glossy**_
+![](docs/img/glossy.gif)
 
 
 <br/>
@@ -143,36 +142,10 @@ def timeout(limit=5):
 
 The `glossy` library contains some handy functions for inspecting your code. For example:
 
-**Checking if a function is decorated**
-
 ```python
 import glossy
 
-glossy.is_decorated(func)  # returns True/False
-```
-
-**Getting all decorators on a function**
-
-```python
-import glossy
-
-decorators = glossy.get_decorators(func)
-```
-
-**Getting a specific decorator**
-
-```python
-import glossy
-
-decorators = glossy.get_decorator(func, "@timer")
-```
-
-**Checking if a function has a specific decorator**
-
-```python
-import glossy
-
-glossy.has_decorator(func, decorator)
+func = glossy.inspect(func)
 ```
 
 <br/>
@@ -187,25 +160,4 @@ Regular decorators are notoriously difficult to test and/or mock. In most cases,
 def slow(seconds):
     time.sleep(seconds)
     return True
-
-
-def test_slow_has_timeout_decorator():
-    """
-    Test slow has the timeout decorator.
-    """
-    status = glossy.has_decorator(slow, timeout)
-
-    assert status is True
-
-
-def test_slow_without_timeout_decorator():
-    """
-    Test slow function without timeout decorator.
-    """
-    glossy.mock(timeout)
-
-    result = slow(3)
-
-    assert result is True
-
 ```
