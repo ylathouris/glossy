@@ -6,13 +6,22 @@ import inspect
 import time
 import types
 
+from .test import mock, is_mocked
 
-Meta = collections.namedtuple("Meta", ["layers"])
-Layer = collections.namedtuple("Layer", ["obj", "parameters"])
+# This variable is used to switch between the default
+# mode and the testing mode. When in testing mode, glossy
+# will apply some additional mocking logic which is generally
+# only rerquired when testing decorators and decorated objects.
+_testing = False
 
 
-class Target:
+class Wrapped:
     """
+    Wrapped
+
+    This class represents a wrapped (or decorated) function/class.
+    To the user it should appear like the wrapped object. It simply
+    adds some additional logic when called.
     """
 
     def __init__(self, func, *args, **kwargs):
@@ -26,69 +35,80 @@ class Target:
         # Glossy attributes
         self.__wrappers__ = []
 
-    @property
-    def func(self):
-        return self._func
-
-    # @property
-    # def args(self):
-    #     return self._args
-
-    # @property
-    # def kwargs(self):
-    #     return self._kwargs
-
-    @property
-    def mocked(self):
-        return self._mocked
-
-    def mock(self, decorator):
-        for meta in self.__wrappers__:
-            decorator_ = meta["decorator"]
-            if decorator_.__name__ == decorator.__name__:
-                print(">>> match: ", decorator_, decorator)
-                self._mocked.append(decorator_)
-
     def __getattr__(self, attr):
-        return getattr(self.func, attr)
+        """
+        Get attribute
+
+        This method overrides the base class method. It is called
+        whenever python can't find an attribute on an object. In this
+        case, we'll look for the attribute on the function we're
+        wrapping. From a user perspective, this make the class appear
+        like the wrapped function which is what we want.
+        """
+        return getattr(self._func, attr)
+
+    @property
+    def _wrapped(self):
+        """
+        Get the wrapped object
+
+        callable: Wrapped function/class.
+        """
+        return self._func.func
+
+    @property
+    def _decorator(self):
+        """
+        Get decorator
+
+        callable: Decorator
+        """
+        obj = getattr(self._wrapped, "__decorator__", None) or self._wrapped
+        return obj
+
+    @property
+    def _mocked(self):
+        """
+        Get mocked status
+
+        bool: True if the decorator has been mocked, false otherwise.
+        """
+        for wrapper in self.__wrappers__:
+            decorator_ = wrapper["decorator"]
+            if decorator_.__name__ == self._decorator.__name__:
+                parameters = decorator_["parameters"]
+                args, kwargs = parameters if parameters else [], {}
+                return is_mocked(decorator_, *args, **kwargs)
+
+        return False
 
     def __call__(self, *args, **kwargs):
-        decorator = getattr(self.func.func, "__decorator__", None) or self.func.func
-        print(">", decorator, self._mocked)
+        """
+        Call the wrapped function with the given parameters.
+        """
+        global _testing
 
         # If we're in testing mode, check if the decorator has been
         # mocked. If it has, then bypass the decorator logic by
         # calling the wrapped function directly.
-        if mode == Modes.Testing:
-            if self._is_mocked(decorator):
-                result = self.func.__wrapped__(*args, **kwargs)
-                return result
+        if _testing and self._mocked:
+            result = self._func.__wrapped__(*args, **kwargs)
+            return result
 
-        result = self.func(*args, **kwargs)
+        result = self._func(*args, **kwargs)
         return result
-
-
-        for wrapper in self.__wrappers__:
-            decorator_ = wrapper["decorator"]
-            if decorator_.__name__ == decorator.__name__:
-                parameters = decorator["parameters"]
-
-                if is_mocked(, wrapper[])
-
-        if decorator in self._mocked:
-            print("> Running decorator (mocked)", decorator)
-            result = self.func.__wrapped__(*args, **kwargs)
-            return result
-        else:
-            print(
-                f"> Running {self.func} (name={self.func.__name__}, decorator={decorator.__name__})"
-            )
-            result = self.func(*args, **kwargs)
-            return result
 
 
 def decorator(func):
     """
+    Glossy Decorator
+
+    This decorator can be used to make your decorators glossy.
+    It simplifies the creation of decorators by flattening their
+    structure and reducing the number of wrapper functions required.
+    It also adds some additional attributes to both the wrapped and
+    the wrapper objects. This makes the code more discoverable and
+    makes it possible for glossy to provide mocking capabilities.
     """
 
     # Create glossy metadata.
@@ -147,7 +167,7 @@ def _get_meta(func, stack):
 
     if outer:
         variables = stack[1].frame.f_locals
-        parameters = _get_parameters(wrapper, variables)
+        parameters = _get_decorator_parameters(outer, variables)
         meta = {"decorator": outer, "parameters": parameters}
     else:
         meta = {"decorator": func, "parameters": None}

@@ -137,27 +137,3 @@ def timeout(limit=5):
 
 
 <br/>
-
-## Inspection
-
-The `glossy` library contains some handy functions for inspecting your code. For example:
-
-```python
-import glossy
-
-func = glossy.inspect(func)
-```
-
-<br/>
-
-## Testing & Mocking
-
-Regular decorators are notoriously difficult to test and/or mock. In most cases, you need to patch the decorator before you import the code that uses the decorator. This is less than ideal. Using `glossy` decorators, you can easily mock all decorators on a function.
-
-```python
-
-@timeout(limit=1.0)
-def slow(seconds):
-    time.sleep(seconds)
-    return True
-```

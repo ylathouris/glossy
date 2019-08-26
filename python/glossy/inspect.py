@@ -106,7 +106,7 @@ class Decorator:
         return self.parameters[1] if self.parameters else None
 
 
-def inspect(obj):
+def peek(obj):
     """
     Inspect the given object.
 
