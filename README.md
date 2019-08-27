@@ -1,5 +1,5 @@
 
-![](docs/img/glossy.gif)
+![](docs/img/glossy-0.gif)
 
 
 <br/>
