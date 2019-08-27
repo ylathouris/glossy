@@ -27,7 +27,7 @@ def mock(func, decorator, *args, **kwargs):
 
     key = id(func)
     _mocks.setdefault(key, [])
-    _mocks[func].append((decorator, args or None, kwargs or None))
+    _mocks[key].append((decorator, args or None, kwargs or None))
 
 
 def is_mocked(func, decorator, *args, **kwargs):

@@ -15,9 +15,9 @@ from .test import mock, is_mocked
 _testing = False
 
 
-class Wrapped:
+class Decorated:
     """
-    Wrapped
+    Decorated
 
     This class represents a wrapped (or decorated) function/class.
     To the user it should appear like the wrapped object. It simply
@@ -34,6 +34,9 @@ class Wrapped:
 
         # Glossy attributes
         self.__wrappers__ = []
+
+    def __repr__(self):
+        return f"<glossy.Decorated({self._func.__name__}) at {hex(id(self))}>"
 
     def __getattr__(self, attr):
         """
@@ -54,7 +57,11 @@ class Wrapped:
 
         callable: Wrapped function/class.
         """
-        return self._func.func
+        wrapped = self._func
+        while hasattr(wrapped, "__wrapped__"):
+            wrapped = wrapped.__wrapped__
+
+        return wrapped
 
     @property
     def _decorator(self):
@@ -63,7 +70,7 @@ class Wrapped:
 
         callable: Decorator
         """
-        obj = getattr(self._wrapped, "__decorator__", None) or self._wrapped
+        obj = getattr(self._func.func, "__decorator__", None) or self._func.func
         return obj
 
     @property
@@ -76,9 +83,11 @@ class Wrapped:
         for wrapper in self.__wrappers__:
             decorator_ = wrapper["decorator"]
             if decorator_.__name__ == self._decorator.__name__:
-                parameters = decorator_["parameters"]
+                parameters = wrapper["parameters"]
                 args, kwargs = parameters if parameters else [], {}
-                return is_mocked(decorator_, *args, **kwargs)
+                val = is_mocked(self._wrapped, decorator_, *args, **kwargs)
+                print("---> mocked", self._wrapped, decorator_, args, kwargs, val)
+                return val
 
         return False
 
@@ -130,12 +139,12 @@ def decorator(func):
 
         caller = functools.partial(func, *args, **kwargs)
         caller = functools.update_wrapper(caller, args[0])
-        target = Target(caller)
+        decorated = Decorated(caller)
 
-        target.__wrapped__ = wrapped
-        target.__wrappers__ = wrapped.__wrappers__
+        decorated.__wrapped__ = wrapped
+        decorated.__wrappers__ = wrapped.__wrappers__
 
-        return target
+        return decorated
 
     return outer
 
@@ -258,9 +267,13 @@ def foo(seconds):
     time.sleep(seconds)
 
 
-# gloss.mock(foo, "@timer")
-foo.mock(timeout)
-foo(0.9)
+from . import test
+
+_testing = True
+test.mock(foo, timeout, limit=1)
+print(test._mocks)
+print(test.is_mocked(foo, timeout, *[], **{"limit": 1}))
+foo(1.1)
 print(foo)
 print("> Name", foo.__name__)
 print("> Wrapped: ", foo.__wrapped__)
