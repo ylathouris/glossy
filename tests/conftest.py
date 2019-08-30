@@ -1,3 +1,3 @@
-from . import fixtures
+from .fixtures import clear_mocks
 
-__all__ = ["fixtures"]
+__all__ = ["clear_mocks"]

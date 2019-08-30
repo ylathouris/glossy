@@ -40,8 +40,9 @@ def decorator(func):
 
         caller = functools.partial(func, *args, **kwargs)
         caller = functools.update_wrapper(caller, args[0])
-        decorated = Decorated(caller)
 
+        decorated = Decorated(caller)
+        decorated = functools.update_wrapper(decorated, args[0])
         decorated.__wrapped__ = wrapped
         decorated.__wrappers__ = wrapped.__wrappers__
 
@@ -108,85 +109,3 @@ def _get_decorator_parameters(obj, locals_):
         kwargs[key] = locals_[key]
 
     return args, kwargs
-
-
-@decorator
-def timer(func, *args, **kwargs):
-    """
-    Timer
-
-    This decorator function is used to time the given
-    function execution.
-    """
-    start = time.time()
-    result = func(*args, **kwargs)
-    duration = time.time() - start
-    print(f"Function {func.__name__} took {duration} seconds")
-    return result
-
-
-def timeout(limit=5):
-    """
-    Timeout
-
-    This decorator is used to raise a timeout error when the
-    given function exceeds the given timeout limit.
-    """
-
-    @decorator
-    def _timeout(func, *args, **kwargs):
-        start = time.time()
-        result = func(*args, **kwargs)
-        duration = time.time() - start
-        if duration > limit:
-            msg = f"Function {func.__name__} exceeded timeout limit ({limit} seconds)"
-            raise TimeoutError(msg)
-
-        print("> duration:", duration)
-        return result
-
-    return _timeout
-
-
-def test(func):
-    @functools.wraps(func)
-    def wrapper(*args, **kwargs):
-        return func(*args, **kwargs)
-
-    return wrapper
-
-
-@test
-def wibble(seconds):
-    time.sleep(seconds)
-
-
-# @timeout(limit=1)
-@timer
-@timeout(limit=1)
-def foo(seconds):
-    time.sleep(seconds)
-
-
-foo.mock(timeout)
-# print(test._mocks)
-# print(test.is_mocked(foo, timeout, *[], **{"limit": 1}))
-foo(1.1)
-# print(foo)
-# print("> Name", foo.__name__)
-# print("> Wrapped: ", foo.__wrapped__)
-# print("> Wrappers: ", foo.__wrappers__)
-
-# print("----")
-
-# - timer
-#   - timeout._timeout
-#     foo
-
-
-# @timeout(1)
-# def bar(seconds):
-#     time.sleep(seconds)
-
-
-# bar(1.1)

@@ -43,8 +43,8 @@ def timeout(limit=5):
 
 
 @timer
-@timeout(limit=0.5)
-def delay(seconds=0.25):
+@timeout(limit=0.001)
+def delay(seconds=0):
     """
     Delay
 
@@ -78,6 +78,11 @@ def test_wrapped_property_returns_original_function():
     assert delay.wrapped == delay.__wrapped__
 
 
+def test_decorated_complies_with_functools_wraps():
+    assert delay.__name__ == "delay"
+    assert delay.__doc__ == delay.wrapped.__doc__
+
+
 def test_decorators_property_returns_expected():
     expected = [timeout, timer]
     for index, source in enumerate(delay.decorators):
@@ -91,7 +96,7 @@ def test_get_decorator_info_with_valid_decorator_returns_info():
         "obj": timeout,
         "name": timeout.__name__,
         "args": [],
-        "kwargs": collections.OrderedDict({"limit": 0.5}),
+        "kwargs": collections.OrderedDict({"limit": 0.001}),
     }
     info = delay.get_decorator_info(timeout)
     assert info == expected
@@ -102,16 +107,37 @@ def test_get_decorator_info_with_invalid_decorator_returns_none():
     assert info is None
 
 
-def test_mock_timeout_decorator_no_parameters():
+def test_mock_simple_decorator():
+    delay.mock_decorator(timer)
+    delay()
+
+
+def test_mock_fancy_decorator_no_parameters():
     # Throws error when not mocked
     with pytest.raises(TimeoutError):
-        delay(0.75)
+        delay(0.01)
 
     # Passes when mocked
-    delay.mock(timeout)
-    delay(0.75)
+    delay.mock_decorator(timeout)
+    delay(0.01)
+
+
+def test_mock_fancy_decorator_with_parameters():
+    # Throws error when not mocked
+    with pytest.raises(TimeoutError):
+        delay(0.01)
+
+    # Passes when mocked
+    delay.mock_decorator(timeout, limit=0.001)
+    delay(0.01)
+
+
+def test_mock_fancy_decorator_with_invalid_parameters_does_not_mock():
+    with pytest.raises(TimeoutError):
+        delay.mock_decorator(timeout, limit=0.25)
+        delay(0.01)
 
 
 def test_mock_decorator_that_doesnt_exist_raises_value_error():
     with pytest.raises(ValueError):
-        delay.mock(dummy_decorator)
+        delay.mock_decorator(dummy_decorator)

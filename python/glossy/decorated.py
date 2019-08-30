@@ -7,6 +7,11 @@ from unittest.mock import ANY
 _mocks = {}
 
 
+def clear_mocks():
+    global _mocks
+    _mocks = {}
+
+
 class Decorated:
     """
     Decorated
@@ -94,7 +99,7 @@ class Decorated:
         for item in self.__wrappers__:
             current_decorator = item["decorator"]
             if match_decorators(decorator, current_decorator):
-                args, kwargs = item["parameters"]
+                args, kwargs = item.get("parameters") or (None, None)
                 return {
                     "obj": current_decorator,
                     "name": current_decorator.__name__,
@@ -113,7 +118,7 @@ class Decorated:
         return obj
 
     @property
-    def _mocks(self):
+    def _mocked_decorators(self):
         """
         Get mocked decorators
         """
@@ -122,7 +127,7 @@ class Decorated:
         key = id(self.wrapped)
         return _mocks.get(key, [])
 
-    def mock(self, decorator, *args, **kwargs):
+    def mock_decorator(self, decorator, *args, **kwargs):
         """
         Mock the given decorator
 
@@ -135,20 +140,24 @@ class Decorated:
         # Throw error when the decorated object doesn't have the
         # given decorator.
         if not self.is_decorated_by(decorator, *args, **kwargs):
-            name = decorator.__name__
-            wrapped_name = self.wrapped.__name__
-            msg = f"Object {wrapped_name} has no decorator: {name}"
-            raise ValueError(msg)
+            info = self.get_decorator_info(decorator)
+            if not info:
+                name = decorator.__name__
+                wrapped_name = self.wrapped.__name__
+                msg = f"Object {wrapped_name} has no decorator: {name}"
+                raise ValueError(msg)
+            else:
+                return
 
         key = id(self.wrapped)
         _mocks.setdefault(key, [])
         _mocks[key].append((decorator, args or ANY, kwargs or ANY))
 
-    def is_mocked(self, decorator, *args, **kwargs):
+    def is_decorator_mocked(self, decorator, *args, **kwargs):
         """
         Check if the given decorator has been mocked.
         """
-        for mocked_decorator, mocked_args, mocked_kwargs in self._mocks:
+        for mocked_decorator, mocked_args, mocked_kwargs in self._mocked_decorators:
             if match_decorators(decorator, mocked_decorator):
                 matched_args = mocked_args in (args, ANY)
                 matched_kwargs = mocked_kwargs in (kwargs, ANY)
@@ -161,7 +170,7 @@ class Decorated:
         """
         Call the decorated function with the given parameters.
         """
-        if self.is_mocked(self._decorator, *args, **kwargs):
+        if self.is_decorator_mocked(self._decorator, *args, **kwargs):
             result = self._func.__wrapped__(*args, **kwargs)
             return result
 
